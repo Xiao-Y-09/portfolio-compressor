@@ -159,7 +159,7 @@ export default function Home() {
               current.kind === "polling"
                 ? {
                     ...current,
-                    status: response.status,
+                    status: response.status as PollingStatus,
                   }
                 : current,
             );

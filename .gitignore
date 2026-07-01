@@ -35,3 +35,5 @@ web/.env.local
 # Real portfolio test fixtures (large, private)
 tests/fixtures/*.pdf
 !tests/fixtures/.gitkeep
+
+cloudflared.exe
