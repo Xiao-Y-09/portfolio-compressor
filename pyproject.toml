@@ -1,0 +1,43 @@
+[project]
+name = "portfolio-compressor"
+version = "0.1.0"
+description = "AI-assisted PDF portfolio compressor."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pymupdf",
+    "opencv-python",
+    "pillow",
+    "pydantic>=2",
+    "slowapi",
+    "python-multipart",
+]
+
+[project.scripts]
+compress = "compressor.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "httpx",
+    "black",
+    "ruff",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.black]
+target-version = ["py311"]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.pytest.ini_options]
+addopts = "--basetemp=.pytest_tmp"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/compressor"]
