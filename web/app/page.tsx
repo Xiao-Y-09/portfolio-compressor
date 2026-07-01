@@ -109,6 +109,11 @@ export default function Home() {
     return selectedPreset;
   }, [customTarget, selectedPreset]);
 
+  const completeDownloadUrl =
+    appState.kind === "complete" && appState.downloadUrl
+      ? `${apiBaseUrl}${appState.downloadUrl}`
+      : "";
+
   useEffect(() => {
     if (appState.kind !== "uploading") {
       return undefined;
@@ -506,19 +511,33 @@ export default function Home() {
           <div className="space-y-4 border-t border-border/80 pt-8">
             <p className="font-serif text-3xl">处理完成</p>
             <p className="text-sm leading-loose text-muted-foreground">
-              大小 {appState.finalSizeMb.toFixed(2)} MB。下载 UI 将在 Task 2.7 实现。
+              最终 {appState.finalSizeMb.toFixed(2)} MB
             </p>
+            <div className="flex flex-col items-start gap-4 pt-2">
+              <a
+                href={completeDownloadUrl}
+                download="portfolio_compressed.pdf"
+                className="inline-flex"
+              >
+                <Button
+                  type="button"
+                  className="h-12 rounded-sm border border-[var(--accent-ink)] bg-[var(--accent-ink)] px-6 text-sm tracking-[0.14em] text-white uppercase hover:bg-[var(--accent-ink-soft)]"
+                >
+                  下载压缩后的 PDF
+                </Button>
+              </a>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-auto rounded-none border-b border-border px-0 py-1 text-sm tracking-[0.12em] uppercase hover:bg-transparent hover:text-[var(--accent-ink)]"
+                onClick={resetFlow}
+              >
+                压缩另一个作品集
+              </Button>
+            </div>
             <p className="text-xs tracking-[0.18em] text-muted-foreground uppercase">
-              {appState.downloadUrl || "下载链接已准备好"}
+              Job · {appState.jobId}
             </p>
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-auto rounded-none border-b border-border px-0 py-1 text-sm tracking-[0.12em] uppercase hover:bg-transparent hover:text-[var(--accent-ink)]"
-              onClick={resetFlow}
-            >
-              重置
-            </Button>
           </div>
         );
       case "error":
@@ -526,14 +545,31 @@ export default function Home() {
           <div className="space-y-4 border-t border-border/80 pt-8">
             <p className="font-serif text-3xl">出现问题</p>
             <p className="text-sm leading-loose text-red-700">{appState.message}</p>
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-auto rounded-none border-b border-border px-0 py-1 text-sm tracking-[0.12em] uppercase hover:bg-transparent hover:text-[var(--accent-ink)]"
-              onClick={resetFlow}
-            >
-              重试
-            </Button>
+            <p className="text-sm leading-loose text-muted-foreground">
+              你可以重试上传，或点击下方按钮返回主页。
+            </p>
+            {appState.message.toLowerCase().includes("unreachable") ? (
+              <p className="text-xs tracking-[0.12em] text-muted-foreground">
+                目标大小可能过小，建议试试更大的目标。
+              </p>
+            ) : null}
+            <div className="flex flex-col items-start gap-4 pt-2">
+              <Button
+                type="button"
+                className="h-12 rounded-sm border border-[var(--accent-ink)] bg-[var(--accent-ink)] px-6 text-sm tracking-[0.14em] text-white uppercase hover:bg-[var(--accent-ink-soft)]"
+                onClick={resetFlow}
+              >
+                重新上传
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-auto rounded-none border-b border-border px-0 py-1 text-sm tracking-[0.12em] uppercase hover:bg-transparent hover:text-[var(--accent-ink)]"
+                onClick={resetFlow}
+              >
+                返回主页
+              </Button>
+            </div>
           </div>
         );
     }

@@ -1,6 +1,7 @@
 import type { ConfirmPageClassification, JobStatusResponse } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const REQUEST_TIMEOUT_MS = 30000;
 
 function getApiUrl(): string {
   if (!API_URL) {
@@ -22,6 +23,29 @@ async function parseError(response: Response): Promise<string> {
   }
 }
 
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+    return response;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("请求超时，请检查网络后重试。");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 export async function uploadPdf(
   file: File,
   targetSizeMb: number,
@@ -30,7 +54,7 @@ export async function uploadPdf(
   formData.append("file", file);
   formData.append("target_size_mb", String(targetSizeMb));
 
-  const response = await fetch(`${getApiUrl()}/jobs`, {
+  const response = await fetchWithTimeout(`${getApiUrl()}/jobs`, {
     method: "POST",
     body: formData,
   });
@@ -43,7 +67,7 @@ export async function uploadPdf(
 }
 
 export async function getJobStatus(jobId: string): Promise<JobStatusResponse> {
-  const response = await fetch(`${getApiUrl()}/jobs/${jobId}`, {
+  const response = await fetchWithTimeout(`${getApiUrl()}/jobs/${jobId}`, {
     method: "GET",
     cache: "no-store",
   });
@@ -59,7 +83,7 @@ export async function confirmJob(
   jobId: string,
   classifications: ConfirmPageClassification[],
 ): Promise<{ job_id: string; status: string }> {
-  const response = await fetch(`${getApiUrl()}/jobs/${jobId}/confirm`, {
+  const response = await fetchWithTimeout(`${getApiUrl()}/jobs/${jobId}/confirm`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
