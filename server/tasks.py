@@ -8,9 +8,10 @@ from compressor.classifier import classify_pages
 from compressor.exceptions import ClassificationError, CompressionError, PDFParseError
 from compressor.pdf_io import render_pdf_pages
 from compressor.pipeline import compress_pdf
-from compressor.schemas import JobStatus
+from compressor.schemas import CompressionStats, Job, JobStatus
 from server.config import OUTPUT_DIR, UPLOAD_DIR
 from server.jobs import JobManager
+from server.logging_config import log_job_completion
 
 
 def run_classification_phase(job_manager: JobManager, job_id: str) -> None:
@@ -39,6 +40,7 @@ def run_classification_phase(job_manager: JobManager, job_id: str) -> None:
 
 def run_compression_phase(job_manager: JobManager, job_id: str) -> None:
     """Compress a reviewed job and persist the output PDF path."""
+    stats: CompressionStats | None = None
     try:
         job_manager.update_status(job_id, JobStatus.COMPRESSING)
         job = job_manager.get_job(job_id)
@@ -46,17 +48,18 @@ def run_compression_phase(job_manager: JobManager, job_id: str) -> None:
             return
 
         output_path = OUTPUT_DIR / f"{job_id}.pdf"
-        compress_pdf(
+        stats = compress_pdf(
             input_path=job.input_path,
             output_path=output_path,
             target_size_mb=job.target_size_mb,
             user_classifications=job.classifications,
         )
-        job_manager.update_status(
+        completed_job = job_manager.update_status(
             job_id,
             JobStatus.COMPLETE,
             output_path=output_path,
         )
+        log_job_completion(completed_job, stats, None)
     except (
         PDFParseError,
         ClassificationError,
@@ -64,7 +67,9 @@ def run_compression_phase(job_manager: JobManager, job_id: str) -> None:
         ValueError,
         OSError,
     ) as exc:
-        _mark_job_failed(job_manager, job_id, str(exc))
+        failed_job = _mark_job_failed(job_manager, job_id, str(exc))
+        if failed_job is not None:
+            log_job_completion(failed_job, stats, str(exc))
 
 
 def _save_thumbnail(job_id: str, page_num: int, image) -> Path:
@@ -78,13 +83,13 @@ def _save_thumbnail(job_id: str, page_num: int, image) -> Path:
     return thumbnail_path
 
 
-def _mark_job_failed(job_manager: JobManager, job_id: str, message: str) -> None:
+def _mark_job_failed(job_manager: JobManager, job_id: str, message: str) -> Job | None:
     """Best-effort transition of a job into failed state."""
     try:
-        job_manager.update_status(
+        return job_manager.update_status(
             job_id,
             JobStatus.FAILED,
             error_message=message,
         )
     except KeyError:
-        return
+        return None
